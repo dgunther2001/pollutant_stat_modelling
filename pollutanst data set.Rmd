@@ -1,0 +1,511 @@
+---
+title: "Daniel Gunther Final Project"
+author: "Daniel Gunther"
+date: "4/5/2022"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+# import necessary libraries
+library(tidyverse)
+library(usmap)
+library(ggmap)
+library(Imap)
+library(GGally)
+library(ggfortify)
+library(MASS)
+library(car)
+library(lindia)
+library(stringr)
+library(gridExtra)
+library(pander)
+library(xtable)
+library(knitr)
+library(broom)
+library(purrr)
+
+# import datasets
+haz_data <- read_csv("epa_hap_daily_summary.csv")
+
+# import health data from 2005
+cancer_rates_2005 <- read_csv("2005_cancer_rates.csv")
+
+# data structure
+str(haz_data)
+
+# lookm at some of the data
+head(haz_data, 10000)
+```
+
+```{r, include = FALSE}
+# year variable
+haz_data <- haz_data %>% 
+  mutate(year = base::substr(date_local, 1, 4)) %>% 
+  mutate(year = as.numeric(year)) %>% 
+  filter(year == 2005)
+```
+
+### Exploratory Figures
+
+```{r, include = FALSE}
+# group by hazard concentration types
+ppbc <- haz_data %>% 
+  filter(units_of_measure == "Parts per billion Carbon")
+
+micrograms <- haz_data %>% 
+  filter(units_of_measure == "Micrograms/cubic meter (LC)")
+
+nanograms <- haz_data %>% 
+  filter(units_of_measure == "Nanograms/cubic meter (25 C)")
+```
+
+```{r}
+microgram_sum <- micrograms %>% 
+  group_by(parameter_name) %>% 
+  summarise(
+    mean = mean(arithmetic_mean, na.rm = TRUE)
+  )
+```
+
+
+
+
+
+
+
+
+
+```{r, include = FALSE}
+# all unique chemicals measured in micrograms
+unique(micrograms$parameter_name)
+```
+
+```{r, include = FALSE}
+# manganese summary dataset
+manganese_by_year <- micrograms %>% 
+  filter(parameter_name == "Manganese PM2.5 LC") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_manganese = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# make ppbc by year dataset
+microgram_chemicals_by_year <- manganese_by_year
+```
+
+```{r, include = FALSE}
+# chromium summary dataset
+chromium_by_year <- micrograms %>% 
+  filter(parameter_name == "Chromium PM2.5 LC") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_chromium = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join chromium to main summary table
+microgram_chemicals_by_year <- left_join(microgram_chemicals_by_year, chromium_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# cadmium summary dataset
+cadmium_by_year <- micrograms %>% 
+  filter(parameter_name == "Cadmium PM2.5 LC") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_cadmium = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join cadmium to main dataset
+microgram_chemicals_by_year <- left_join(microgram_chemicals_by_year, cadmium_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# lead summary dataset
+lead_by_year <- micrograms %>% 
+  filter(parameter_name == "Lead PM2.5 LC") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_lead = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join lead to main dataset
+microgram_chemicals_by_year <- left_join(microgram_chemicals_by_year, lead_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# nickel summary dataset
+nickel_by_year <- micrograms %>% 
+  filter(parameter_name == "Nickel PM2.5 LC") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_nickel = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join nickel to main dataset
+microgram_chemicals_by_year <- left_join(microgram_chemicals_by_year, nickel_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# arsenic summary dataset
+arsenic_by_year <- micrograms %>% 
+  filter(parameter_name == "Arsenic PM2.5 LC") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_arsenic = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join arsenic to main dataset
+microgram_chemicals_by_year <- left_join(microgram_chemicals_by_year, arsenic_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# beryllium summary dataset
+beryllium_by_year <- micrograms %>% 
+  filter(parameter_name == "Beryllium PM2.5 LC") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_beryllium = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join beryllium to main dataset
+microgram_chemicals_by_year <- left_join(microgram_chemicals_by_year, beryllium_by_year, by = c("year"))
+```
+
+
+
+```{r, include = FALSE}
+# all unique chemicals measured in ppbc
+unique(ppbc$parameter_name)
+```
+
+```{r, include = FALSE}
+# benzene summary dataset
+benzene_by_year <- ppbc %>% 
+  filter(parameter_name == "Benzene") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_benzene = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join benzene to main dataset
+ppbc_chemicals_by_year <- benzene_by_year
+```
+
+```{r, include = FALSE}
+# vinyl chloride summary dataset
+vinyl_chloride_by_year <- ppbc %>% 
+  filter(parameter_name == "vinyl chloride") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_vinyl_chloride = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join vinyl chloride to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , vinyl_chloride_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Tetrachloroethylene summary dataset
+Tetrachloroethylene_by_year <- ppbc %>% 
+  filter(parameter_name == "Tetrachloroethylene") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_Tetrachloroethylene = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Tetrachloroethylene to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , Tetrachloroethylene_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# cis-13-Dichloropropene summary dataset
+cis_13_Dichloropropene_by_year <- ppbc %>% 
+  filter(parameter_name == "cis-13-Dichloropropene") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_cis_13_Dichloropropene = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join cis-13-Dichloropropene to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , cis_13_Dichloropropene_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Carbon tetrachloride summary dataset
+Carbon_tetrachloride_by_year <- ppbc %>% 
+  filter(parameter_name == "Carbon tetrachloride") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_Carbon_tetrachloride = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Carbon tetrachloride to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , Carbon_tetrachloride_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# trans-13-Dichloropropene summary dataset
+trans_13_Dichloropropene_by_year <- ppbc %>% 
+  filter(parameter_name == "trans-13-Dichloropropene") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_trans_13_Dichloropropene = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join trans-13-Dichloropropene to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , trans_13_Dichloropropene_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# 1122-Tetrachloroethane summary dataset
+US_1122_Tetrachloroethane_by_year <- ppbc %>% 
+  filter(parameter_name == "1122-Tetrachloroethane") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_1122_Tetrachloroethane = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join 1122-Tetrachloroethane to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , US_1122_Tetrachloroethane_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Ethylene dichloride summary dataset
+Ethylene_dichloride_by_year <- ppbc %>% 
+  filter(parameter_name == "Ethylene dichloride") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_Ethylene_dichloride = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Ethylene dichloride to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , Ethylene_dichloride_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# 13-Butadiene summary dataset
+US_13_Butadiene_by_year <- ppbc %>% 
+  filter(parameter_name == "13-Butadiene") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_13_Butadiene = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join 13-Butadiene to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , US_13_Butadiene_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Chloroform summary dataset
+Chloroform_by_year <- ppbc %>% 
+  filter(parameter_name == "Chloroform") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_Chloroform = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Chloroform to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year, Chloroform_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# 12-Dichloropropane summary dataset
+US_12_Dichloropropane_by_year <- ppbc %>% 
+  filter(parameter_name == "12-Dichloropropane") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_12_Dichloropropane = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join 12-Dichloropropane to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , US_12_Dichloropropane_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Dichloromethane summary dataset
+Dichloromethane_by_year <- ppbc %>% 
+  filter(parameter_name == "Dichloromethane") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_Dichloromethane = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Dichloromethane to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , Dichloromethane_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Trichloroethylene summary dataset
+Trichloroethylene_by_year <- ppbc %>% 
+  filter(parameter_name == "Trichloroethylene") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_Trichloroethylene = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Trichloroethylene to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , Trichloroethylene_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Ethylene dibromide summary dataset
+Ethylene_dibromide_by_year <- ppbc %>% 
+  filter(parameter_name == "Ethylene dibromide") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_Ethylene_dibromide = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Ethylene dibromide to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , Ethylene_dibromide_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Acetaldehyde summary dataset
+Acetaldehyde_by_year <- ppbc %>% 
+  filter(parameter_name == "Acetaldehyde") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_Acetaldehyde = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Acetaldehyde to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , Acetaldehyde_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Formaldehyde summary dataset
+Formaldehyde_by_year <- ppbc %>% 
+  filter(parameter_name == "Formaldehyde") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_Formaldehyde = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Formaldehyde to main dataset
+ppbc_chemicals_by_year <- left_join(ppbc_chemicals_by_year , Formaldehyde_by_year, by = c("year"))
+```
+
+
+
+```{r, include = FALSE}
+# tells me how many unique parameters in nanograms dataset
+unique(nanograms$parameter_name)
+```
+
+```{r, include = FALSE}
+# Beryllium (TSP) STP summary dataset
+ber_by_year <- nanograms %>% 
+  filter(parameter_name == "Beryllium (TSP) STP") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_ber = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join beryllium to main dataset
+nano_chemicals_by_year <- ber_by_year
+```
+
+```{r, include = FALSE}
+# Manganese PM10 STP summary dataset
+small_mang_by_year <- nanograms %>% 
+  filter(parameter_name == "Manganese PM10 STP") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_small_mang = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join mang to main dataset
+nano_chemicals_by_year <- left_join(nano_chemicals_by_year , small_mang_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Cadmium PM10 STP summary dataset
+small_cadmium_by_year <- nanograms %>% 
+  filter(parameter_name == "Cadmium PM10 STP") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_small_cadmium = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join cadmium to main dataset
+nano_chemicals_by_year <- left_join(nano_chemicals_by_year , small_cadmium_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Arsenic PM10 STP summary dataset
+small_arsenic_by_year <- nanograms %>% 
+  filter(parameter_name == "Arsenic PM10 STP") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_small_arsenic = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join arsenic to main dataset
+nano_chemicals_by_year <- left_join(nano_chemicals_by_year , small_arsenic_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Chromium PM10 STP summary dataset
+small_chromium_by_year <- nanograms %>% 
+  filter(parameter_name == "Chromium PM10 STP") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_small_chromium = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join chromium to main dataset
+nano_chemicals_by_year <- left_join(nano_chemicals_by_year , small_chromium_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Nickel PM10 STP summary dataset
+small_nickel_by_year <- nanograms %>% 
+  filter(parameter_name == "Nickel PM10 STP") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_small_nickel = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Nickel PM10 STP to main dataset
+nano_chemicals_by_year <- left_join(nano_chemicals_by_year , small_nickel_by_year, by = c("year"))
+```
+
+```{r, include = FALSE}
+# Beryllium PM10 STP summary dataset
+tiny_beryllium_by_year <- nanograms %>% 
+  filter(parameter_name == "Beryllium PM10 STP") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_tiny_beryllium = mean(arithmetic_mean, na.rm = TRUE)
+  )
+
+# join Beryllium PM10 STP to main dataset
+nano_chemicals_by_year <- left_join(nano_chemicals_by_year , tiny_beryllium_by_year, by = c("year"))
+```
+
+```{r}
+cancer_rates_2005 <- cancer_rates_2005 %>% 
+  mutate(state = state.name[match(STATE, state.abb)])
+
+# map of 2005 cancer rates in the US
+plot_usmap(data = cancer_rates_2005, values = "RATE", color = "black") + 
+  scale_fill_continuous(name = "Cancer Rate (Cases Per 100,000)", low = "white", high ="darkblue",label = scales::comma) + 
+  theme(legend.position = "right")+
+  labs(
+    title = "US Cancer Rates per 100,000 in 2005",
+  )+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+
+
+
+
+
